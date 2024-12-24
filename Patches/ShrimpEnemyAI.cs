@@ -30,14 +30,6 @@ namespace Shrimp.Patches
         private RaycastHit hitInfoB;
         private PlayerControllerB lastHitPlayer;
 
-        /*
-        [Header("Tracking/Memory")]
-        [Space(3f)]
-        public Vector3 nestPosition;
-
-        private bool choseNestPosition;
-        */
-
         [Space(3f)]
         public float angryTimer;
         public GrabbableObject targetItem;
@@ -192,37 +184,6 @@ namespace Shrimp.Patches
             }
             return false;
         }
-
-        /*
-        private void ChooseNestPosition()
-        {
-            ShrimpEnemyAI[] array = GameObject.FindObjectsOfType<ShrimpEnemyAI>();
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] != this && !PathIsIntersectedByLineOfSight(array[i].nestPosition, calculatePathDistance: false, avoidLineOfSight: false))
-                {
-                    nestPosition = array[i].nestPosition;
-                    SyncNestPositionServerRpc(nestPosition);
-                    return;
-                }
-            }
-            nestPosition = ChooseClosestNodeToPosition(base.transform.position).position;
-            SyncNestPositionServerRpc(nestPosition);
-        }
-
-        [ServerRpc]
-        private void SyncNestPositionServerRpc(Vector3 newNestPosition)
-        {
-            {
-                SyncNestPositionClientRpc(newNestPosition);
-            }
-        }
-        [ClientRpc]
-        private void SyncNestPositionClientRpc(Vector3 newNestPosition)
-        {
-            nestPosition = newNestPosition;
-        }
-        */
         public override void DoAIInterval()
         {
             base.DoAIInterval();
@@ -465,21 +426,6 @@ namespace Shrimp.Patches
                 creatureSFX.Stop();
             }
         }
-        /*
-        private void SetReturningToNest()
-        {
-            if (SetDestinationToPosition(nestPosition, checkForPath: true))
-            {
-                targetItem = null;
-                StopSearch(searchForItems, clear: false);
-            }
-            else
-            {
-                Debug.Log(base.gameObject.name + ": Return to nest was called, but nest is not accessible! Abandoning and choosing a new nest position.");
-                ChooseNestPosition();
-            }
-        }
-        */
 
         private void LateUpdate()
         {
@@ -499,9 +445,6 @@ namespace Shrimp.Patches
                     detectPlayersInterval -= Time.deltaTime;
                 }
                 AnimateLooking();
-                /*
-                SetArmLayerWeight();
-                */
             }
         }
 
@@ -549,14 +492,6 @@ namespace Shrimp.Patches
                     headLookRig.weight = Mathf.Lerp(headLookRig.weight, 0f, 10f);
                     return;
                 }
-            }
-            if (base.IsOwner)
-            {
-                /*
-                turnCompass.LookAt(lookTarget);
-                base.transform.rotation = Quaternion.Lerp(base.transform.rotation, turnCompass.rotation, 6f * Time.deltaTime);
-                base.transform.localEulerAngles = new Vector3(0f, base.transform.localEulerAngles.y, 0f);
-                */
             }
             if (watchingPlayer != null && !lookingAtPositionOfInterest)
             {
@@ -615,12 +550,6 @@ namespace Shrimp.Patches
                             angryTimer = 3.25f;
                             break;
                         }
-                        /*
-                        if (!isAngry && currentBehaviourStateIndex == 0 && num3 < 8f && (targetItem == null || Vector3.Distance(targetItem.transform.position, base.transform.position) > 7.5f) && base.IsOwner)
-                        {
-                            SwitchToBehaviourState(1);
-                        }
-                        */
                     }
                     if (currentBehaviourStateIndex != 2 && Vector3.Distance(base.transform.position, allPlayersInLineOfSight[i].transform.position) < 2.5f)
                     {
@@ -892,13 +821,6 @@ namespace Shrimp.Patches
                     {
                         break;
                     }
-                    
-                    /*
-                    if (!targetPlayer && currentBehaviourStateIndex != 0)
-                    {
-                        SwitchToBehaviourState(0);
-                    }
-                    */
 
                     if (stunNormalizedTimer > 0f)
                     {
