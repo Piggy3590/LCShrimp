@@ -9,8 +9,10 @@ using UnityEngine;
 using LethalLib.Modules;
 using System.Security.Permissions;
 using Shrimp.Patches;
+using HarmonyLib.Tools;
+using Unity.Netcode;
+using System.Collections.Generic;
 
-[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 
 namespace Shrimp
 {
@@ -28,6 +30,7 @@ namespace Shrimp
         public static ManualLogSource mls;
         public static AssetBundle Bundle;
 
+        public static AudioClip[] footsteps;
         public static AudioClip footstep1;
         public static AudioClip footstep2;
         public static AudioClip footstep3;
@@ -72,6 +75,27 @@ namespace Shrimp
 
             mls = BepInEx.Logging.Logger.CreateLogSource(modGUID);
 
+            try
+            {
+                var types = Assembly.GetExecutingAssembly().GetTypes();
+                foreach (var type in types)
+                {
+                    var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                    foreach (var method in methods)
+                    {
+                        var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                        if (attributes.Length > 0)
+                        {
+                            method.Invoke(null, null);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                mls.LogError(e);
+            }
+
             mls.LogInfo("[Shrimp] Loaded!");
 
             string directoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -97,6 +121,14 @@ namespace Shrimp
                 footstep2 = Bundle.LoadAsset<AudioClip>("Footstep2.ogg");
                 footstep3 = Bundle.LoadAsset<AudioClip>("Footstep3.ogg");
                 footstep4 = Bundle.LoadAsset<AudioClip>("Footstep4.ogg");
+
+                List<AudioClip> footstepList = new List<AudioClip>();
+                footstepList.Add(footstep1);
+                footstepList.Add(footstep2);
+                footstepList.Add(footstep3);
+                footstepList.Add(footstep4);
+                footsteps = footstepList.ToArray();
+
                 dogEatItem = Bundle.LoadAsset<AudioClip>("DogEatObject.ogg");
                 dogEatPlayer = Bundle.LoadAsset<AudioClip>("EatPlayer.ogg");
                 bigGrowl = Bundle.LoadAsset<AudioClip>("BigGrowl.ogg");
@@ -155,20 +187,18 @@ namespace Shrimp
 
                 shrimpPrefab.transform.GetChild(0).GetComponent<EnemyAICollisionDetect>().mainScript = shrimpAI;
 
-                //elevatorManager.AddComponent<ElevatorSystem>();
                 shrimpItemManager.AddComponent<ShrimpItemManager>();
+
+                shrimpEnemy.enemyPrefab = shrimpPrefab;
 
                 LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(shrimpPrefab);
                 LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(shrimpItemManager);
 
-                shrimpEnemy.enemyPrefab = shrimpPrefab;
-
-                LethalLib.Modules.Enemies.RegisterEnemy(shrimpEnemy, shrimpSpawnWeight.Value, Levels.LevelTypes.All, Enemies.SpawnType.Default, shrimpTerminalNode, shrimpTerminalKeyword);
+                Enemies.RegisterEnemy(shrimpEnemy, shrimpSpawnWeight.Value, Levels.LevelTypes.All, Enemies.SpawnType.Default, shrimpTerminalNode, shrimpTerminalKeyword);
 
                 base.Logger.LogInfo("Successfully loaded assets!");
 
                 Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), (string)null);
-                //harmony.PatchAll(typeof(PlaceLung));
             }
         }
     }

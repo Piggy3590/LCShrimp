@@ -30,6 +30,14 @@ namespace Shrimp.Patches
         private RaycastHit hitInfoB;
         private PlayerControllerB lastHitPlayer;
 
+        /*
+        [Header("Tracking/Memory")]
+        [Space(3f)]
+        public Vector3 nestPosition;
+
+        private bool choseNestPosition;
+        */
+
         [Space(3f)]
         public float angryTimer;
         public GrabbableObject targetItem;
@@ -135,7 +143,7 @@ namespace Shrimp.Patches
             enemyBehaviourState2.name = "Following";
             enemyBehaviourStatesList.Add(enemyBehaviourState2);
             EnemyBehaviourState enemyBehaviourState3 = new EnemyBehaviourState();
-            enemyBehaviourState3.name = "Gifting";
+            enemyBehaviourState3.name = "Chasing";
             enemyBehaviourStatesList.Add(enemyBehaviourState3);
 
             enemyBehaviourStates = enemyBehaviourStatesList.ToArray();
@@ -184,6 +192,7 @@ namespace Shrimp.Patches
             }
             return false;
         }
+
         public override void DoAIInterval()
         {
             base.DoAIInterval();
@@ -426,6 +435,21 @@ namespace Shrimp.Patches
                 creatureSFX.Stop();
             }
         }
+        /*
+        private void SetReturningToNest()
+        {
+            if (SetDestinationToPosition(nestPosition, checkForPath: true))
+            {
+                targetItem = null;
+                StopSearch(searchForItems, clear: false);
+            }
+            else
+            {
+                Debug.Log(base.gameObject.name + ": Return to nest was called, but nest is not accessible! Abandoning and choosing a new nest position.");
+                ChooseNestPosition();
+            }
+        }
+        */
 
         private void LateUpdate()
         {
@@ -445,15 +469,34 @@ namespace Shrimp.Patches
                     detectPlayersInterval -= Time.deltaTime;
                 }
                 AnimateLooking();
+                /*
+                SetArmLayerWeight();
+                */
             }
         }
 
-        private void CalculateAnimationDirection(float maxSpeed = 1f)
+
+        void CalculateAnimationDirection(float maxSpeed = 1f)
         {
             agentLocalVelocity = animationContainer.InverseTransformDirection(Vector3.ClampMagnitude(transform.position - previousPosition, 1f) / (Time.deltaTime * 4f));
-            previousPosition = transform.position;
             creatureAnimator.SetFloat("walkSpeed", Mathf.Clamp(agentLocalVelocity.magnitude / 5f, 0f, 3f));
             creatureAnimator.SetFloat("runSpeed", Mathf.Clamp(agentLocalVelocity.magnitude / 2.7f, 3f, 4f));
+            CalculateAnimationDirectionServerRpc(agentLocalVelocity, creatureAnimator.GetFloat("walkSpeed"), creatureAnimator.GetFloat("runSpeed"));
+        }
+
+        [ServerRpc]
+        private void CalculateAnimationDirectionServerRpc(Vector3 localVel, float walkSp, float runSp)
+        {
+            CalculateAnimationDirectionClientRpc(localVel, walkSp, runSp);
+        }
+
+        [ClientRpc]
+        void CalculateAnimationDirectionClientRpc(Vector3 localVel, float walkSp, float runSp)
+        {
+            agentLocalVelocity = localVel;
+            previousPosition = transform.position;
+            creatureAnimator.SetFloat("walkSpeed", walkSp);
+            creatureAnimator.SetFloat("runSpeed", runSp);
         }
 
         private void AnimateLooking()
@@ -492,6 +535,14 @@ namespace Shrimp.Patches
                     headLookRig.weight = Mathf.Lerp(headLookRig.weight, 0f, 10f);
                     return;
                 }
+            }
+            if (base.IsOwner)
+            {
+                /*
+                turnCompass.LookAt(lookTarget);
+                base.transform.rotation = Quaternion.Lerp(base.transform.rotation, turnCompass.rotation, 6f * Time.deltaTime);
+                base.transform.localEulerAngles = new Vector3(0f, base.transform.localEulerAngles.y, 0f);
+                */
             }
             if (watchingPlayer != null && !lookingAtPositionOfInterest)
             {
@@ -550,6 +601,12 @@ namespace Shrimp.Patches
                             angryTimer = 3.25f;
                             break;
                         }
+                        /*
+                        if (!isAngry && currentBehaviourStateIndex == 0 && num3 < 8f && (targetItem == null || Vector3.Distance(targetItem.transform.position, base.transform.position) > 7.5f) && base.IsOwner)
+                        {
+                            SwitchToBehaviourState(1);
+                        }
+                        */
                     }
                     if (currentBehaviourStateIndex != 2 && Vector3.Distance(base.transform.position, allPlayersInLineOfSight[i].transform.position) < 2.5f)
                     {
@@ -644,23 +701,7 @@ namespace Shrimp.Patches
             footStepTime += Time.deltaTime * agentLocalVelocity.magnitude / 8f;
             if (footStepTime > 0.5f)
             {
-                int randomVal = Random.Range(0, 5);
-
-                switch (randomVal)
-                {
-                    case 0:
-                        creatureVoice.PlayOneShot(Plugin.footstep1, Random.Range(0.8f, 1f));
-                        break;
-                    case 1:
-                        creatureVoice.PlayOneShot(Plugin.footstep2, Random.Range(0.8f, 1f));
-                        break;
-                    case 2:
-                        creatureVoice.PlayOneShot(Plugin.footstep3, Random.Range(0.8f, 1f));
-                        break;
-                    case 3:
-                        creatureVoice.PlayOneShot(Plugin.footstep4, Random.Range(0.8f, 1f));
-                        break;
-                }
+                creatureVoice.PlayOneShot(Plugin.footsteps[Random.Range(0, 5)], Random.Range(0.8f, 1f));
                 footStepTime = 0f;
             }
 
@@ -821,6 +862,13 @@ namespace Shrimp.Patches
                     {
                         break;
                     }
+                    
+                    /*
+                    if (!targetPlayer && currentBehaviourStateIndex != 0)
+                    {
+                        SwitchToBehaviourState(0);
+                    }
+                    */
 
                     if (stunNormalizedTimer > 0f)
                     {
